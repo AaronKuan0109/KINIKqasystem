@@ -109,7 +109,7 @@ def get_response():
 
     # 将向量搜索到的文档内容和对话历史结合为上下文
     history_text = "\n".join([f"User: {entry['user']}\nAssistant: {entry['assistant']}" for entry in chat_history])
-    combined_input = history_text + "\n\n" + "相關資料:\n" + "\n".join([doc.page_content for doc in docs]) + "\n\n" + f"User: {user_input}"
+    
 
     # 初始化语言模型（LLM），配置生成回答的参数
     llm = ChatOpenAI(model_name="gpt-4o", temperature=0.1, max_tokens=2500)
@@ -119,7 +119,7 @@ def get_response():
         "你是一位負責回答中國砂輪（Office of Academic Affairs）相關問題的人員。會有不同國籍的人員用不同語言向你詢問問題，請仔細從提供的資料中提取有用的信息回答問題，"
         "請盡可能提供相關細節與資訊、列出具體的流程步驟和聯系人相關信息來回答用戶問題。"
     )
-
+    combined_input = prompt+history_text + "\n\n" + "相關資料:\n" + "\n".join([doc.page_content for doc in docs]) + "\n\n" + f"User: {user_input}"
     # 加载问答链（QA chain），用于处理问答任务
     chain = load_qa_chain(llm, chain_type="stuff")
 
