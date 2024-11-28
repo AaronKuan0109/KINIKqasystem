@@ -10,41 +10,39 @@ function copyText(text) {
     }
 }
 
-// 讓錄音按鈕添加事件監聽器
 document.getElementById('startBtn').addEventListener('click', startRecording);
 document.getElementById('stopBtn').addEventListener('click', stopRecording);
 
 let mediaRecorder;
 let audioChunks = [];
 const userInput = document.querySelector(".user-input");
-
-// 開始錄音功能
 function startRecording() {
     navigator.mediaDevices.getUserMedia({ audio: true })
         .then(stream => {
             mediaRecorder = new MediaRecorder(stream);
             mediaRecorder.start();
             audioChunks = [];
+
             mediaRecorder.addEventListener('dataavailable', event => {
                 audioChunks.push(event.data);
             });
+
             mediaRecorder.addEventListener('stop', () => {
                 const audioBlob = new Blob(audioChunks, { type: 'audio/wav' });
+                const audioUrl = URL.createObjectURL(audioBlob);
                 uploadAudio(audioBlob);
             });
         })
         .catch(error => console.error('錄音啟動失敗:', error));
 }
 
-// 停止錄音功能
 function stopRecording() {
     if (mediaRecorder) {
         mediaRecorder.stop();
-        mediaRecorder.stream.getTracks().forEach(track => track.stop());
+        mediaRecorder.stream.getTracks().forEach(track => track.stop());  // 停止所有軌道，關閉麥克風
     }
 }
 
-// 上傳音頻到伺服器(app.py)
 function uploadAudio(blob) {
     const formData = new FormData();
     formData.append('audio', blob, 'recording.wav');
@@ -154,4 +152,3 @@ document.addEventListener("DOMContentLoaded", function() {
         submitForm();
     });
 });
-
