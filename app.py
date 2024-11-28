@@ -30,34 +30,14 @@ app = Flask(__name__)
 vector_store = Chroma(
     collection_name="test",  # 向量集合的名称
     embedding_function=OpenAIEmbeddings(),  # 嵌入函数，用于将文本转换为向量
-    persist_directory="../db/test"  # 向量数据库的存储位置
+    persist_directory="./db/test"  # 向量数据库的存储位置
 )
 
 # 自定义 NamedBytesIO 类，用于处理音频文件上传
 class NamedBytesIO(io.BytesIO):
     name = 'transcript.wav'  # 设置默认的文件名
 
-# 聊天历史记录的存储
 chat_history = []
-
-# 定义问题模板
-question_templates = {
-    "證明": [
-        "如何申請{keyword}？",
-        "{keyword}需要哪些文件？",
-        "{keyword}的用途是什麼？",
-        "辦理{keyword}的流程是什麼？",
-        "{keyword}需要多久可以拿到？"
-    ],
-    "申請": [
-        "申請{keyword}的流程是什麼？",
-        "{keyword}的條件有哪些？",
-        "辦理{keyword}需要多長時間？",
-        "{keyword}的審核標準是什麼？",
-        "{keyword}的辦理費用是多少？"
-    ],
-   
-}
 
 # 定义回答后处理函数
 def post_process_answer(answer_text):
@@ -88,7 +68,11 @@ def post_process_answer(answer_text):
 @app.route('/')
 def index():
     return render_template('index.html')
+    
 
+
+
+    
 # 定义获取回答的路由，处理 POST 请求
 @app.route('/get_response', methods=['POST'])
 def get_response():
@@ -110,7 +94,6 @@ def get_response():
     # 将向量搜索到的文档内容和对话历史结合为上下文
     history_text = "\n".join([f"User: {entry['user']}\nAssistant: {entry['assistant']}" for entry in chat_history])
     
-
     # 初始化语言模型（LLM），配置生成回答的参数
     llm = ChatOpenAI(model_name="gpt-4o", temperature=0.1, max_tokens=2500)
 
@@ -119,7 +102,8 @@ def get_response():
         "你是一位負責回答中國砂輪（Office of Academic Affairs）相關問題的人員。會有不同國籍的人員用不同語言向你詢問問題，請仔細從提供的資料中提取有用的信息回答問題，"
         "請盡可能提供相關細節與資訊、列出具體的流程步驟和聯系人相關信息來回答用戶問題。"
     )
-    combined_input = prompt+history_text + "\n\n" + "相關資料:\n" + "\n".join([doc.page_content for doc in docs]) + "\n\n" + f"User: {user_input}"
+    combined_input =prompt+history_text + "\n\n" + "相關資料:\n" + "\n".join([doc.page_content for doc in docs]) + "\n\n" + f"User: {user_input}"
+
     # 加载问答链（QA chain），用于处理问答任务
     chain = load_qa_chain(llm, chain_type="stuff")
 
@@ -143,6 +127,24 @@ def get_response():
 
     # 返回生成的回答和範例問題
     return jsonify({'response': answer})
+
+@app.route('/upload-audio', methods=['POST'])
+def upload_audio():
+    audio_file = request.files['audio']
+    if audio_file:
+        audio_stream = NamedBytesIO(audio_file.read())
+        audio_stream.name = 'transcript.wav' 
+
+        transcript = client.audio.transcriptions.create(
+            model="whisper-1",
+            file=audio_stream,
+            response_format='text',
+            language="zh"  # 指定中文
+        )
+        cc = OpenCC('s2t')
+        text = cc.convert(transcript)
+        return jsonify({'message': '音頻已處理', 'transcript': text})
+    return jsonify({'error': '沒有接收到音訊文件'}), 400
 
 # 运行 Flask 应用，设置调试模式和端口号
 if __name__ == '__main__':
